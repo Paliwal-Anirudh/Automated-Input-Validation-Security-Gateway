@@ -17,10 +17,56 @@ class Rule:
 
 
 DEFAULT_RULES: list[Rule] = [
-    Rule("SQLI_KEYWORD", "high", "Potential SQL keywords/operators.", [r"\bselect\b", r"\bunion\b", r"\bdrop\b", r"\bor\s+1=1\b", r"--", r"/\*"], ["T1190", "T1059"]),
-    Rule("COMMAND_INJECTION", "high", "Shell command chaining/metacharacters.", [r";", r"&&", r"\|\|", r"`", r"\$\("], ["T1059"]),
-    Rule("XSS_PATTERN", "medium", "Script/event handler patterns.", [r"<\s*script", r"onerror\s*=", r"onload\s*=", r"javascript:"], ["T1059", "T1189"]),
-    Rule("PATH_TRAVERSAL", "medium", "Traversal indicators.", [r"\.\./", r"\.\.\\", r"%2e%2e%2f", r"%2e%2e%5c"], ["T1006"]),
+    # SQL Injection
+    Rule("SQLI_KEYWORD", "high", "Potential SQL keywords/operators.", [
+        r"\bselect\b", r"\bunion\b", r"\bdrop\b", r"\binsert\b", r"\bupdate\b", r"\bdelete\b", r"\bwhere\b", r"\bfrom\b", r"\btable\b",
+        r"\bor\s+1=1\b", r"--", r"/\*", r"\bexec\b", r"\bcast\b", r"\bconvert\b", r"\bchar\b", r"\bconcat\b", r"\bsubstr\b", r"\bmid\b",
+        r"\bbenchmark\b", r"\bsleep\b", r"\bwaitfor\b", r"\bpg_sleep\b", r"\bpg_terminate_backend\b"
+    ], ["T1190", "T1059"]),
+    # Command Injection
+    Rule("COMMAND_INJECTION", "high", "Shell command chaining/metacharacters.", [
+        r";", r"&&", r"\|\|", r"`", r"\$\(", r"\|", r">", r"<", r"\n", r"\r", r"\x00", r"\x1a", r"\x1b", r"\x7f"
+    ], ["T1059"]),
+    # XSS
+    Rule("XSS_PATTERN", "medium", "Script/event handler patterns.", [
+        r"<\s*script", r"onerror\s*=", r"onload\s*=", r"javascript:", r"<iframe", r"<img", r"<svg", r"<object", r"<embed", r"<link", r"<body", r"<style", r"<base", r"<form", r"document\\.cookie", r"document\\.location", r"window\\.location", r"eval\\(", r"alert\\(", r"src\s*=\s*['\"]?javascript:"
+    ], ["T1059", "T1189"]),
+    # Path Traversal
+    Rule("PATH_TRAVERSAL", "medium", "Traversal indicators.", [
+        r"\.\./", r"\.\.\\", r"%2e%2e%2f", r"%2e%2e%5c", r"/etc/passwd", r"/windows/win.ini", r"\bboot\.ini\b"
+    ], ["T1006"]),
+    # CSRF tokens (allowlist: must match strict UUID or hex pattern)
+    Rule("CSRF_TOKEN_FORMAT", "high", "CSRF token must be a valid UUID or hex string.", [
+        r"^(?:[a-fA-F0-9]{32}|[a-fA-F0-9\-]{36})$"
+    ], ["T1110"]),
+    # Integer allowlist (context-specific, e.g. age, id)
+    Rule("INTEGER_ONLY", "high", "Input must be a valid integer.", [
+        r"^-?\d+$"
+    ], []),
+    # Float allowlist
+    Rule("FLOAT_ONLY", "high", "Input must be a valid float.", [
+        r"^-?\d+(\.\d+)?$"
+    ], []),
+    # Email allowlist
+    Rule("EMAIL_FORMAT", "medium", "Input must be a valid email address.", [
+        r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    ], []),
+    # URL allowlist
+    Rule("URL_FORMAT", "medium", "Input must be a valid URL.", [
+        r"^(https?|ftp)://[\w\-]+(\.[\w\-]+)+([/?#][^\s]*)?$"
+    ], []),
+    # Date allowlist (ISO 8601)
+    Rule("DATE_ISO8601", "medium", "Input must be a valid ISO 8601 date.", [
+        r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$"
+    ], []),
+    # Safe file path allowlist (no traversal, only safe chars, no leading slash)
+    Rule("SAFE_FILE_PATH", "high", "File path must be safe (no traversal, only allowed chars, no leading slash).", [
+        r"^(?![\\/])(?:(?!\.\./|\.\.\\)[\w\-./])+$"
+    ], []),
+    # Safe character set (ASCII printable, no control chars)
+    Rule("SAFE_CHARSET", "medium", "Input must only contain safe printable characters.", [
+        r"^[\x20-\x7E]+$"
+    ], []),
 ]
 
 

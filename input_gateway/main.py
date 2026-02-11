@@ -39,7 +39,13 @@ def _load_scan_text(args: argparse.Namespace) -> str:
         return args.text
     if args.file is not None:
         return Path(args.file).read_text(encoding="utf-8")
-    raise ValueError("scan requires --text or --file")
+    # Interactive prompt if neither provided
+    print("No --text or --file provided. Please enter input text (end with Ctrl+D or Ctrl+Z on Windows):")
+    try:
+        # For multi-line input, read until EOF
+        return sys.stdin.read().strip()
+    except EOFError:
+        raise ValueError("No input provided.")
 
 
 def _escalate_decision(current: str, ai_recommended: str) -> str:
