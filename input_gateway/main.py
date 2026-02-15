@@ -31,6 +31,13 @@ def parse_args() -> argparse.Namespace:
     history = sub.add_parser("history", help="Show recent decisions")
     history.add_argument("--limit", type=int, default=10)
 
+    # New: ai-assess command
+    ai_cmd = sub.add_parser("ai-assess", help="Directly use AI assessor on input")
+    ai_group = ai_cmd.add_mutually_exclusive_group(required=True)
+    ai_group.add_argument("--text", help="Inline input text for AI assessor")
+    ai_group.add_argument("--file", help="Path to input file for AI assessor")
+    ai_cmd.add_argument("--config-report", help="Path to JSON file for current report (optional)")
+
     return parser.parse_args()
 
 
@@ -112,6 +119,31 @@ def run_history(args: argparse.Namespace, cfg: dict) -> int:
     return 0
 
 
+def run_ai_assess(args: argparse.Namespace, cfg: dict) -> int:
+    # Load input text
+    if args.text is not None:
+        raw_text = args.text
+    elif args.file is not None:
+        raw_text = Path(args.file).read_text(encoding="utf-8")
+    else:
+        print("No --text or --file provided for ai-assess.", file=sys.stderr)
+        return 1
+
+    # Load current report if provided
+    if args.config_report:
+        try:
+            with open(args.config_report, "r", encoding="utf-8") as f:
+                current_report = json.load(f)
+        except Exception as exc:
+            print(f"Failed to load current report: {exc}", file=sys.stderr)
+            current_report = {}
+    else:
+        current_report = {}
+
+    ai_result = ai_assess(raw_text, current_report, cfg.get("ai", {}))
+    print(json.dumps(ai_result, indent=2))
+    return 0
+
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
@@ -119,6 +151,8 @@ def main() -> None:
         raise SystemExit(run_scan(args, cfg))
     if args.command == "history":
         raise SystemExit(run_history(args, cfg))
+    if args.command == "ai-assess":
+        raise SystemExit(run_ai_assess(args, cfg))
     raise SystemExit(2)
 
 

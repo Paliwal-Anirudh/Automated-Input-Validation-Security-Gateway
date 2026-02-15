@@ -12,12 +12,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "db_path": "logs/gateway.db",
     "rule_overrides": {},
     "ai": {
-        "enabled": False,
+        "enabled": True,
         "provider": "openai-compatible",
-        "endpoint": "",
-        "api_key": "",
-        "model": "",
-        "timeout_s": 8,
+        "endpoint": "https://api.openai.com/v1/chat/completions",
+        # API key is embedded here for demonstration. In production, use environment variables or secrets manager.
+        "api_key": "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",
+        "model": "gpt-5.2-chat",
+        "timeout_s": 30,
     },
 }
 
