@@ -10,7 +10,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "max_input_chars": 100000,
     "log_path": "logs/audit.jsonl",
     "db_path": "logs/gateway.db",
-    "mitre_overrides": {},
+    "rule_overrides": {},
     "ai": {
         "enabled": False,
         "provider": "openai-compatible",

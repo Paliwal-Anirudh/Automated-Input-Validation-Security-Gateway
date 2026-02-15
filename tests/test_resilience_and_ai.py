@@ -6,7 +6,7 @@ from input_gateway.normalizer import normalize_text
 from input_gateway.rules import evaluate_rules
 
 
-def test_invalid_mitre_override_severity_falls_back_to_default() -> None:
+def test_invalid_rule_override_severity_falls_back_to_default() -> None:
     text = normalize_text("SELECT * FROM users")
     hits = evaluate_rules(
         text,
@@ -36,7 +36,7 @@ def test_scan_returns_structured_error_when_init_db_fails(monkeypatch, capsys) -
         "db_path": "logs/gateway.db",
         "max_input_chars": 100000,
         "severity_weights": {"low": 0.33, "medium": 0.55, "high": 1.75},
-        "mitre_overrides": {},
+        "rule_overrides": {},
         "decision_thresholds": {"warn": 0.55, "block": 1.75},
         "ai": {"enabled": False},
     }
@@ -58,7 +58,7 @@ def test_ai_invalid_response_does_not_escalate(monkeypatch, capsys) -> None:
         "db_path": "logs/gateway.db",
         "max_input_chars": 100000,
         "severity_weights": {"low": 0.33, "medium": 0.55, "high": 1.75},
-        "mitre_overrides": {},
+        "rule_overrides": {},
         "decision_thresholds": {"warn": 0.55, "block": 1.75},
         "ai": {"enabled": True},
     }

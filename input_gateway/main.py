@@ -76,7 +76,7 @@ def run_scan(args: argparse.Namespace, cfg: dict) -> int:
             raise ValueError(f"Input exceeds max_input_chars={cfg['max_input_chars']}")
 
         normalized = normalize_text(raw_text)
-        hits = evaluate_rules(normalized, cfg["severity_weights"], cfg.get("mitre_overrides", {}))
+        hits = evaluate_rules(normalized, cfg["severity_weights"], cfg.get("rule_overrides", {}))
         score = score_risk(hits)
         decision = decide(score, cfg["decision_thresholds"])
         report = build_report(raw_text, normalized, hits, score, decision)

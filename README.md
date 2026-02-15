@@ -8,7 +8,7 @@ A modular, CLI-first security gateway that normalizes input, evaluates configura
 input_gateway/
 ├── main.py         # CLI commands: scan, history
 ├── normalizer.py   # Input normalization
-├── rules.py        # Rule engine + MITRE technique mapping
+├── rules.py        # Rule engine + category tagging
 ├── scorer.py       # Weighted risk score aggregation
 ├── decision.py     # allow/warn/block threshold logic
 ├── logger.py       # JSONL logs + SQLite persistence
@@ -34,10 +34,10 @@ Total risk score is the sum of all hit scores. Decision uses thresholds:
 - `score >= 0.55` => `warn`
 - else `allow`
 
-## MITRE Integration (practical starter)
+## Rule Metadata
 
-Rules include MITRE ATT&CK technique IDs (example: `T1190`, `T1059`).
-You can override rule severity/reason using `mitre_overrides` in config to align with your threat intel process.
+Rules include simple internal category tags (example: `injection`, `xss`).
+You can override rule severity/reason using `rule_overrides` in config to align with your threat intel process.
 
 ## Optional AI Assessment
 
@@ -68,7 +68,7 @@ python -m input_gateway.main history --limit 20
   "max_input_chars": 100000,
   "log_path": "logs/audit.jsonl",
   "db_path": "logs/gateway.db",
-  "mitre_overrides": {
+  "rule_overrides": {
     "SQLI_KEYWORD": {"severity": "high", "description": "SQLi attempt aligned to current intel"}
   },
   "ai": {
@@ -90,5 +90,5 @@ pytest -q
 ## Reliability Safeguards
 
 - `scan` now wraps logger initialization inside the fail-safe path so DB/path failures still return structured JSON block errors (no traceback leaks).
-- `mitre_overrides` severity values are normalized/validated; invalid values fall back to the rule default severity, preventing accidental zero-risk bypasses.
+- `rule_overrides` severity values are normalized/validated; invalid values fall back to the rule default severity, preventing accidental zero-risk bypasses.
 - AI parse failures are marked as `invalid_response` and do **not** escalate decisions; only validated AI JSON can escalate.
