@@ -80,6 +80,7 @@ def run_scan(args: argparse.Namespace, cfg: dict) -> int:
         if not isinstance(overrides, dict):
             overrides = cfg.get("mitre_overrides", {})
         hits = evaluate_rules(normalized, cfg["severity_weights"], overrides)
+        hits = evaluate_rules(normalized, cfg["severity_weights"], cfg.get("rule_overrides", {}))
         score = score_risk(hits)
         decision = decide(score, cfg["decision_thresholds"])
         report = build_report(raw_text, normalized, hits, score, decision)
