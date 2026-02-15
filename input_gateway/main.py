@@ -71,6 +71,27 @@ def _safe_write_error(logger: GatewayLogger | None, error: dict) -> None:
         return
 
 
+def _refresh_summary(report: dict) -> None:
+    decision = str(report.get("decision", "block"))
+    score = report.get("score", 0.0)
+    hits = report.get("hits", [])
+    hits_len = len(hits) if isinstance(hits, list) else 0
+
+    explanation = report.get("explanation")
+    if not isinstance(explanation, dict):
+        explanation = {}
+        report["explanation"] = explanation
+    explanation["summary"] = f"Decision '{decision}' from score {score} based on {hits_len} hit(s)."
+
+
+def _load_config_report(path: str) -> dict:
+    with open(path, "r", encoding="utf-8") as handle:
+        loaded = json.load(handle)
+    if not isinstance(loaded, dict):
+        raise ValueError("config-report root must be a JSON object")
+    return loaded
+
+
 def run_scan(args: argparse.Namespace, cfg: dict) -> int:
     logger: GatewayLogger | None = None
 
@@ -87,15 +108,18 @@ def run_scan(args: argparse.Namespace, cfg: dict) -> int:
         if not isinstance(overrides, dict):
             overrides = cfg.get("mitre_overrides", {})
         hits = evaluate_rules(normalized, cfg["severity_weights"], overrides)
-        hits = evaluate_rules(normalized, cfg["severity_weights"], cfg.get("rule_overrides", {}))
         score = score_risk(hits)
         decision = decide(score, cfg["decision_thresholds"])
         report = build_report(raw_text, normalized, hits, score, decision)
 
-        ai_result = ai_assess(raw_text, report, cfg.get("ai", {}))
+        try:
+            ai_result = ai_assess(raw_text, report, cfg.get("ai", {}))
+        except Exception as exc:
+            ai_result = {"enabled": bool(cfg.get("ai", {}).get("enabled", False)), "status": "error", "reason": str(exc)}
         report["ai_assessment"] = ai_result
         if ai_result.get("status") == "ok":
             report["decision"] = _escalate_decision(report["decision"], str(ai_result.get("recommended_decision", "warn")))
+        _refresh_summary(report)
 
         logger.write_jsonl(report)
         logger.save_decision(report)
@@ -112,37 +136,37 @@ def run_scan(args: argparse.Namespace, cfg: dict) -> int:
 
 
 def run_history(args: argparse.Namespace, cfg: dict) -> int:
-    logger = GatewayLogger(cfg["log_path"], cfg["db_path"])
-    logger.init_db()
-    rows = logger.fetch_recent(args.limit)
-    print(json.dumps(rows, indent=2))
-    return 0
+    logger: GatewayLogger | None = None
+    try:
+        logger = GatewayLogger(cfg["log_path"], cfg["db_path"])
+        logger.init_db()
+        rows = logger.fetch_recent(args.limit)
+        print(json.dumps(rows, indent=2))
+        return 0
+    except Exception as exc:
+        error = build_error_report(str(exc))
+        _safe_write_error(logger, error)
+        print(json.dumps(error, indent=2), file=sys.stderr)
+        return 1
 
 
 def run_ai_assess(args: argparse.Namespace, cfg: dict) -> int:
-    # Load input text
-    if args.text is not None:
-        raw_text = args.text
-    elif args.file is not None:
-        raw_text = Path(args.file).read_text(encoding="utf-8")
-    else:
-        print("No --text or --file provided for ai-assess.", file=sys.stderr)
+    logger: GatewayLogger | None = None
+    try:
+        logger = GatewayLogger(cfg["log_path"], cfg["db_path"])
+        raw_text = _load_scan_text(args)
+        if len(raw_text) > int(cfg["max_input_chars"]):
+            raise ValueError(f"Input exceeds max_input_chars={cfg['max_input_chars']}")
+
+        current_report = _load_config_report(args.config_report) if args.config_report else {}
+        ai_result = ai_assess(raw_text, current_report, cfg.get("ai", {}))
+        print(json.dumps(ai_result, indent=2))
+        return 0
+    except Exception as exc:
+        error = build_error_report(str(exc))
+        _safe_write_error(logger, error)
+        print(json.dumps(error, indent=2), file=sys.stderr)
         return 1
-
-    # Load current report if provided
-    if args.config_report:
-        try:
-            with open(args.config_report, "r", encoding="utf-8") as f:
-                current_report = json.load(f)
-        except Exception as exc:
-            print(f"Failed to load current report: {exc}", file=sys.stderr)
-            current_report = {}
-    else:
-        current_report = {}
-
-    ai_result = ai_assess(raw_text, current_report, cfg.get("ai", {}))
-    print(json.dumps(ai_result, indent=2))
-    return 0
 
 def main() -> None:
     args = parse_args()

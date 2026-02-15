@@ -81,6 +81,8 @@ python -m input_gateway.main history --limit 20
 }
 ```
 
+If `ai.enabled` is `true`, set `ai.api_key` in config or provide it via env var `AIVSG_AI_API_KEY` or `OPENAI_API_KEY`.
+
 ## Tests
 
 ```bash
